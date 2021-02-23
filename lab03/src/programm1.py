@@ -8,7 +8,7 @@ array = [0] * n
 new_array = []
 
 for i in range(n):
-    array[i] = random.randint(-60, 60)
+    array[i] = random.randint(-10, 60)
 
 print(*array, sep=", ")
 print("Enter x and y")

@@ -11,30 +11,40 @@ students = dict()
 for i in range(n):
     students[surnames[i]] = heights[i]
 
-min = students['st1']
-min_key = 'st1'
-max = students['st1']
-max_key = 'st1'
-
-for i in students:
-    if min > students[i]:
-        min = students[i]
-        min_key = i
-    if max < students[i]:
-        max = students[i]
-        max_key = i
-
-high_students_key = [min_key] * 2
-high_students = [students[min_key]] * 2
-
-for i in students:
-    if i != max_key:
-        if students[i] > high_students[0]:
-            high_students[1] = high_students[0]
-            high_students_key[1] = high_students_key[0]
-            high_students[0] = students[i]
-            high_students_key[0] = i
-
-print("Max:", max_key, "Min:", min_key)
-print("2&3 High student:", high_students_key)
 print(students)
+
+# -------------------1-----------
+min_st = min(students.keys(), key=(lambda k: students[k]))
+print('Min:', min_st)
+max_st = max(students.keys(), key=(lambda k: students[k]))
+print('Max:', max_st)
+
+# ---------------------2------------
+deleted = {}
+deleted[max_st] = students.pop(max_st)
+
+second_st = max(students.keys(), key=(lambda k: students[k]))
+
+deleted[second_st] = students.pop(second_st)
+
+third_st = max(students.keys(), key=(lambda k: students[k]))
+
+print("Second and Third tall student:", second_st, third_st)
+
+for i in deleted.keys():
+    students[i] = deleted[i]
+
+# ---------------------3------------
+
+first = min_st
+second = min_st
+
+for i in students:
+    if students[i] > students[first]:
+        second = first
+        first = i
+
+print("First and Second student(One loop):", first, second)
+
+print(students)
+

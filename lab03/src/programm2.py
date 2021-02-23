@@ -23,9 +23,10 @@ minimum_key = 0
 
 for i in range(n):
     for j in range(m):
-        if minimum > array[i][j]:
-            minimum = array[i][j]
-            minimum_key = j
+        if array[i][j] >= 0:
+            if minimum > array[i][j]:
+                minimum = array[i][j]
+                minimum_key = j
 
 print("MinElem:", minimum, "Column", minimum_key)
 
