@@ -1,5 +1,5 @@
 # --------1---------
-text = "hello world im fine and how are you"
+text = "      hello world im-fine and how are you  "
 
 text = text.strip()
 text = text.replace("-", " ")
@@ -35,7 +35,7 @@ print("All consonants which didn't in", _text, "is:", consonantText)
 
 # -------3-------
 # a)
-s = str(set('aeiouy'))
+s = "".join(set('aeiouy'))
 print(s)
 
 # b)
@@ -45,7 +45,8 @@ set_nums = set()
 for i in range(numbers):
     set_nums.add(i)
 
-s = str(set_nums)
+for i in set_nums:
+    s = s + ', ' + str(i)
 print(s)
 
 # c)
@@ -65,5 +66,5 @@ while i <= ord(lst):
     set_str.add(chr(i))
     i += 1
 
-s = str(set_str)
+s = "".join(set_str)
 print(s)
