@@ -1,3 +1,29 @@
+from abc import ABC, abstractmethod
+
+
+class CarException(Exception):
+    pass
+
+
+class StartCar(CarException):
+    pass
+
+
+class Carcass(ABC):
+    def drive(self):
+        pass
+
+    def lock(self):
+        pass
+
+    def park(self):
+        pass
+
+    @staticmethod
+    def reverse():
+        print('This car is riding reverse')
+
+
 class Engine:
     volume: float
     horse_power: int
@@ -10,7 +36,8 @@ class Engine:
         return f"Volume: {self.volume}; HP: {self.horse_power}"
 
 
-class Car:
+class Car(Carcass):
+    fuel = 40
     model: str
     is_mechanic: bool
     year: int
@@ -21,6 +48,12 @@ class Car:
         self.is_mechanic = is_mechanic
         self.year = year
         self.engine = Engine(volume, horse_power)
+
+    def work(self):
+        self.drive()
+        self.reverse()
+        self.park()
+        self.lock()
 
     def price(self):
         start_price = 1000
@@ -49,6 +82,19 @@ class Car:
             return "Mechanical"
         else:
             return "Automatic"
+
+    def drive(self):
+        if self.fuel > 5:
+            print("Car " + self.model + " is driving")
+            self.fuel -= 5
+        else:
+            raise StartCar("Not enough fuel for driving")
+
+    def lock(self):
+        print("Car " + self.model + " has been locked")
+
+    def park(self):
+        print("Car  " + self.model + " has been parked")
 
     def __repr__(self):
         return f"Car Model: {self.model}"
@@ -85,15 +131,10 @@ def read_f(file_name):
     return result
 
 
-tesla1 = Car("S", False, 2018, 2.2, 120)
-tesla2 = Car("E", False, 2013, 1.6, 80)
-tesla3 = Car("T", False, 2022, 3.3, 220)
-
-teslas = [tesla1, tesla2, tesla3]
-write_f(teslas, '1.txt')
-
-# print('First car:', tesla1)
-
-teslas_r = read_f('1.txt')
-print('Car was read from file:', teslas_r)
-# print('Prise:', tesla1.price())
+# c = Car('S', True, 1990, 1.5, 75)
+#
+# c.work()
+# print(c.fuel, end=" ")
+# print(c.model)
+# print(Car.fuel, end=" ")
+# print(Car.model)
