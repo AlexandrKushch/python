@@ -62,6 +62,7 @@ def show_restaurants(message):
 @bot.message_handler(commands=['reset'])
 def del_restaurants(message):
     restaurants.clear()
+    db.flushdb()
 
 
 @bot.message_handler(commands=['nearby'])
@@ -185,6 +186,7 @@ def add_location(message):
 
     try:
         print(message.location)
+        print(type(message.location))
         if message.location:
             restaurants[-1].location = message.location
         else:
@@ -205,9 +207,7 @@ def read_db():
         name = i.decode('utf-8')
         item = db.lrange(name, 0, 3)
         photo = item[0].decode('utf-8')
-        location = {'latitude': float(item[1].decode('utf-8')),
-                    'longitude': float(item[2].decode('utf-8'))}
-
+        location = telebot.types.Location(float(item[2].decode('utf-8')), float(item[1].decode('utf-8')))
         restaurants.append(Restaurant(name, photo, location))
 
 
