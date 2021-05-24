@@ -7,7 +7,9 @@ botKey = '1896751220:AAE0pIOR3_nIszu2Rwka5wFDglUXLi13njI'
 googleApiKey = 'AIzaSyDjGJU6nkuHjRfd1irqw9biU9ARwFsY2Ac'
 
 bot = telebot.TeleBot(botKey)
-db = redis.Redis()
+# db = redis.Redis()
+db = redis.Redis(host='redis-19503.c269.eu-west-1-3.ec2.cloud.redislabs.com',
+                 port='19503', password='rpDXua6ZFyW9FiqK5wqDjyq9AiLFrLEz')
 
 
 class Restaurant:
@@ -35,11 +37,14 @@ def send_welcome(message):
                           f"/reset - To delete all restaurants\n"
                           f"/nearby - To show all restaurants near you within 500 meters")
 
+    print(message.from_user)
+    restaurants[message.from_user.id] = []
+
 
 @bot.message_handler(commands=['add'])
 def add_request(message):
     print('Add request started')
-    restaurants.append(Restaurant())
+    restaurants[message.from_user.id].append(Restaurant())
 
     send = bot.send_message(message.chat.id, 'Enter Name of Restaurant')
     bot.register_next_step_handler(send, add_name)
@@ -47,22 +52,35 @@ def add_request(message):
 
 @bot.message_handler(commands=['list'])
 def show_restaurants(message):
-    if restaurants:
-        for i in restaurants:
-            bot.send_message(message.chat.id, 'Restaurant Name: ' + i.name)
+    try:
+        if restaurants[message.from_user.id]:
+            for i in restaurants[message.from_user.id]:
+                bot.send_message(message.chat.id, 'Restaurant Name: ' + i.name)
 
-            with open(i.photo, 'rb') as photo:
-                bot.send_photo(message.chat.id, photo)
+                with open(i.photo, 'rb') as photo:
+                    bot.send_photo(message.chat.id, photo)
 
-            bot.send_location(message.chat.id, i.location.latitude, i.location.longitude)
-    else:
-        bot.reply_to(message, 'List is empty')
+                bot.send_location(message.chat.id, i.location.latitude, i.location.longitude)
+        else:
+            bot.reply_to(message, 'List is empty')
+    except Exception as e:
+        bot.reply_to(message, "Error: Supposedly you have to send me /start for registration your ID")
 
 
 @bot.message_handler(commands=['reset'])
 def del_restaurants(message):
-    restaurants.clear()
-    db.flushdb()
+    try:
+        for i in restaurants[message.from_user.id]:
+            os.remove(i.photo)
+
+        os.rmdir(str(message.from_user.id))
+
+        restaurants[message.from_user.id].clear()
+        db.delete(message.from_user.id)
+        bot.reply_to(message, "List has reset")
+    except Exception as e:
+        bot.reply_to(message, "Error: Supposedly you have to send me /start for registration your ID")
+        print(e)
 
 
 @bot.message_handler(commands=['nearby'])
@@ -78,6 +96,96 @@ def nearby(message):
 
     send = bot.send_message(message.chat.id, "Send me your location")
     bot.register_next_step_handler(message, make_request)
+
+
+@bot.message_handler(content_types=['text'])
+def add_name(message):
+    print('Add name started')
+
+    try:
+        if message.text.lower() == 'cancel':
+            bot.reply_to(message, 'Canceled')
+            del restaurants[message.from_user.id][-1]
+            return
+    except Exception as e:
+        pass
+
+    try:
+        restaurants[message.from_user.id][-1].name = message.text
+
+        send = bot.send_message(message.chat.id, 'Send me Photo of Restaurant')
+        bot.register_next_step_handler(message, add_photo)
+    except Exception as e:
+        bot.reply_to(message, 'What do you mean?')
+
+
+@bot.message_handler(content_types=['photo'])
+def add_photo(message):
+    print('Add photo started')
+
+    try:
+        if message.text.lower() == 'cancel':
+            bot.reply_to(message, 'Canceled')
+            del restaurants[message.from_user.id][-1]
+            return
+    except Exception as e:
+        pass
+
+    try:
+        file_id = message.photo[-1].file_id
+        file = bot.get_file(file_id)
+        path = file.file_path
+        downloaded = bot.download_file(path)
+
+        filename = path.split('/')[1]
+
+        if not os.path.exists(str(message.chat.id) + '/'):
+            os.mkdir(str(message.chat.id) + '/')
+
+        photo_path = str(message.chat.id) + '/' + filename
+
+        with open(photo_path, 'wb') as new_file:
+            new_file.write(downloaded)
+
+        restaurants[message.from_user.id][-1].photo = photo_path
+
+        send = bot.send_message(message.chat.id, 'Send me Location of Restaurant')
+        bot.register_next_step_handler(message, add_location)
+    except Exception as e:
+        bot.reply_to(message, 'Hahaha, lol')
+
+
+@bot.message_handler(content_types=['location'])
+def add_location(message):
+    print('Add location started')
+
+    try:
+        if message.text.lower() == 'cancel':
+            bot.reply_to(message, 'Canceled')
+            del restaurants[message.from_user.id][-1]
+            return
+    except Exception as e:
+        pass
+
+    try:
+        print(message.location)
+        print(type(message.location))
+        if message.location:
+            restaurants[message.from_user.id][-1].location = message.location
+        else:
+            raise Exception()
+        bot.send_message(message.chat.id, 'Restaurant has been added in list')
+    except Exception as e:
+        bot.reply_to(message, "What is it?")
+
+    try:
+        db.rpush(message.from_user.id,
+                 restaurants[message.from_user.id][-1].name,
+                 restaurants[message.from_user.id][-1].photo,
+                 restaurants[message.from_user.id][-1].location.latitude,
+                 restaurants[message.from_user.id][-1].location.longitude)
+    except Exception as e:
+        print(e)
 
 
 @bot.message_handler(content_types=['location'])
@@ -115,106 +223,33 @@ def make_request(message):
     pass
 
 
-@bot.message_handler(content_types=['text'])
-def add_name(message):
-    print('Add name started')
-
-    try:
-        if message.text.lower() == 'cancel':
-            bot.reply_to(message, 'Canceled')
-            del restaurants[-1]
-            return
-    except Exception as e:
-        pass
-
-    try:
-        restaurants[-1].name = message.text
-
-        send = bot.send_message(message.chat.id, 'Send me Photo of Restaurant')
-        bot.register_next_step_handler(message, add_photo)
-    except Exception as e:
-        bot.reply_to(message, 'What do you mean?')
-
-
-@bot.message_handler(content_types=['photo'])
-def add_photo(message):
-    print('Add photo started')
-
-    try:
-        if message.text.lower() == 'cancel':
-            bot.reply_to(message, 'Canceled')
-            del restaurants[-1]
-            return
-    except Exception as e:
-        pass
-
-    try:
-        file_id = message.photo[-1].file_id
-        file = bot.get_file(file_id)
-        path = file.file_path
-        downloaded = bot.download_file(path)
-
-        filename = path.split('/')[1]
-
-        if not os.path.exists(str(message.chat.id) + '/'):
-            os.mkdir(str(message.chat.id) + '/')
-
-        photo_path = str(message.chat.id) + '/' + filename
-
-        with open(photo_path, 'wb') as new_file:
-            new_file.write(downloaded)
-
-        restaurants[-1].photo = photo_path
-
-        send = bot.send_message(message.chat.id, 'Send me Location of Restaurant')
-        bot.register_next_step_handler(message, add_location)
-    except Exception as e:
-        bot.reply_to(message, 'Hahaha, lol')
-
-
-@bot.message_handler(content_types=['location'])
-def add_location(message):
-    print('Add location started')
-
-    try:
-        if message.text.lower() == 'cancel':
-            bot.reply_to(message, 'Canceled')
-            del restaurants[-1]
-            return
-    except Exception as e:
-        pass
-
-    try:
-        print(message.location)
-        print(type(message.location))
-        if message.location:
-            restaurants[-1].location = message.location
-        else:
-            raise Exception()
-        bot.send_message(message.chat.id, 'Restaurant has been added in list')
-    except Exception as e:
-        bot.reply_to(message, "What is it?")
-
-    try:
-        db.rpush(restaurants[-1].name, restaurants[-1].photo, restaurants[-1].location.latitude,
-                 restaurants[-1].location.longitude)
-    except Exception as e:
-        print(e)
-
-
 def read_db():
     for i in db.keys():
-        name = i.decode('utf-8')
-        item = db.lrange(name, 0, 3)
-        photo = item[0].decode('utf-8')
-        location = telebot.types.Location(float(item[2].decode('utf-8')), float(item[1].decode('utf-8')))
-        restaurants.append(Restaurant(name, photo, location))
+        start = 0
+        end = 3
+
+        id = int(i.decode('utf-8'))
+        item = db.lrange(id, start, end)
+        restaurants[id] = []
+
+        while item:
+            start += 4
+            end += 4
+
+            name = item[0].decode('utf-8')
+            photo = item[1].decode('utf-8')
+            location = telebot.types.Location(float(item[3].decode('utf-8')), float(item[2].decode('utf-8')))
+
+            restaurants[id].append(Restaurant(name, photo, location))
+
+            item = db.lrange(id, start, end)
 
 
-restaurants = []
-read_db()
+if __name__ == '__main__':
+    restaurants = {}
+    read_db()
 
-for i in restaurants:
-    print(i)
+    for i in restaurants:
+        print(i)
 
-bot.polling(none_stop=True)
+    bot.polling(none_stop=True)
