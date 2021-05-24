@@ -98,7 +98,6 @@ def nearby(message):
     bot.register_next_step_handler(message, make_request)
 
 
-@bot.message_handler(content_types=['text'])
 def add_name(message):
     print('Add name started')
 
@@ -111,15 +110,18 @@ def add_name(message):
         pass
 
     try:
-        restaurants[message.from_user.id][-1].name = message.text
+        if message.text:
+            restaurants[message.from_user.id][-1].name = message.text
+        else:
+            raise Exception
 
         send = bot.send_message(message.chat.id, 'Send me Photo of Restaurant')
         bot.register_next_step_handler(message, add_photo)
     except Exception as e:
-        bot.reply_to(message, 'What do you mean?')
+        send = bot.send_message(message.chat.id, 'Enter Name of Restaurant')
+        bot.register_next_step_handler(send, add_name)
 
 
-@bot.message_handler(content_types=['photo'])
 def add_photo(message):
     print('Add photo started')
 
@@ -152,10 +154,10 @@ def add_photo(message):
         send = bot.send_message(message.chat.id, 'Send me Location of Restaurant')
         bot.register_next_step_handler(message, add_location)
     except Exception as e:
-        bot.reply_to(message, 'Hahaha, lol')
+        send = bot.send_message(message.chat.id, 'Send me Photo of Restaurant')
+        bot.register_next_step_handler(message, add_photo)
 
 
-@bot.message_handler(content_types=['location'])
 def add_location(message):
     print('Add location started')
 
@@ -176,7 +178,8 @@ def add_location(message):
             raise Exception()
         bot.send_message(message.chat.id, 'Restaurant has been added in list')
     except Exception as e:
-        bot.reply_to(message, "What is it?")
+        send = bot.send_message(message.chat.id, 'Send me Location of Restaurant')
+        bot.register_next_step_handler(message, add_location)
 
     try:
         db.rpush(message.from_user.id,
@@ -218,9 +221,8 @@ def make_request(message):
         else:
             raise Exception()
     except Exception as e:
-        bot.reply_to(message, "What is it?")
-
-    pass
+        send = bot.send_message(message.chat.id, "Send me your location")
+        bot.register_next_step_handler(message, make_request)
 
 
 def read_db():
